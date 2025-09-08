@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8" />
+    <title>L4D2 Transit Tools — Module & Chat Commands</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #0c0c0c;
+            --panel: #121212;
+            --ink: #e6e6e6;
+            --muted: #a5a5a5;
+            --line: #242424;
+            --accent: #d4b000;
+            --hl: #1a1a1a;
+            --chip: #1a1a1a;
+            --green: #41d67a;
+            --orange: #ffb155;
+            --cyan: #57c7ff;
+            --red: #ff6b6b;
+            --violet: #c468ff;
+            --yellow: #ffd84f;
+        }
+
+        html,
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+            line-height: 1.62
+        }
+
+        .wrap {
+            max-width: 1000px;
+            margin: 28px auto;
+            padding: 0 16px
+        }
+
+        h1 {
+            font-size: 28px;
+            margin: 0 0 6px;
+            color: var(--accent)
+        }
+
+        h2 {
+            font-size: 22px;
+            margin: 28px 0 8px
+        }
+
+        h3 {
+            font-size: 18px;
+            margin: 20px 0 6px
+        }
+
+        p {
+            margin: 10px 0
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 20px;
+            background: var(--panel)
+        }
+
+        th,
+        td {
+            border: 1px solid var(--line);
+            padding: 8px 10px;
+            vertical-align: top
+        }
+
+        th {
+            background: var(--hl);
+            text-align: left
+        }
+
+        code,
+        pre {
+            background: #151515;
+            border: 1px solid var(--line);
+            border-radius: 6px
+        }
+
+        code {
+            padding: .15em .4em
+        }
+
+        pre {
+            padding: 12px;
+            overflow: auto
+        }
+
+        .toc {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            padding: 10px 12px
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .chip {
+            display: inline-block;
+            background: var(--chip);
+            border: 1px solid var(--line);
+            padding: 4px 8px;
+            border-radius: 999px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            font-size: 12px
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+        }
+
+        .sw {
+            display: inline-block;
+            width: .9em;
+            height: .9em;
+            border-radius: 2px;
+            vertical-align: -1px;
+            margin-right: .4em
+        }
+
+        .sw.cyan {
+            background: var(--cyan)
+        }
+
+        .sw.orange {
+            background: var(--orange)
+        }
+
+        .sw.green {
+            background: var(--green)
+        }
+
+        .sw.red {
+            background: var(--red)
+        }
+
+        .sw.violet {
+            background: var(--violet)
+        }
+
+        .sw.yellow {
+            background: var(--yellow)
+        }
+
+        .note {
+            background: #131313;
+            border-left: 3px solid var(--accent);
+            padding: 10px 12px
+        }
+
+        .kbd {
+            background: #202020;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 1px 6px
+        }
+
+        footer {
+            margin: 40px 0 20px;
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        a {
+            color: #86cbff;
+            text-decoration: none
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+
+        <h1 id="top">L4D2 Transit Tools — Module & Chat Commands</h1>
+        <p class="muted">Map-to-map coordinate transit helper with forward/reverse mapping, teleport, and beam
+            visualization.</p>
+
+        <div class="toc">
+            <strong>Contents</strong>
+            <ul>
+                <li><a href="#about">About</a></li>
+                <li><a href="#install">Install</a></li>
+                <li><a href="#module">Module (Data & Visualization)</a></li>
+                <li><a href="#commands">Chat Commands</a></li>
+                <li><a href="#workflow">User Workflow</a></li>
+                <li><a href="#convars">ConVars</a></li>
+                <li><a href="#datafile">Data File Format</a></li>
+                <li><a href="#troubleshoot">Troubleshooting</a></li>
+            </ul>
+        </div>
+
+        <div>
+            <span class="chip">Forward/Reverse Mapping</span>
+            <span class="chip">Teleport (optional)</span>
+            <span class="chip">Beam Visualization</span>
+            <span class="chip mono">Data: cfg/sm_server/data/l4d2_transit_pairs.cfg</span>
+        </div>
+
+        <h2 id="about">About</h2>
+        <p>
+            本プラグインは、<strong>前マップの基準点 P1(pre)</strong> と <strong>次マップの基準点 P2(aft)</strong> を1度記録し、
+            <span class="mono">Δ = P2 − P1</span> を保存します。以降は任意の現在位置 <span class="mono">P</span> に対して
+            <em>Forward: P+Δ</em> / <em>Reverse: P−Δ</em> を瞬時に計算・表示・テレポートできます。
+        </p>
+
+        <h2 id="install">Install</h2>
+        <ol>
+            <li>コンパイル済み <span class="mono">l4d2_transit_tools.smx</span> を <span
+                    class="mono">cfg/sm_server/plugins</span> に配置。</li>
+            <li><strong>初回のみ</strong>、保存先フォルダ <span class="mono">cfg/sm_server/data/</span> を作成（空で可）。</li>
+            <li>サーバ再起動。ConVar自動cfg <span class="mono">cfg/sourcemod/l4d2_transit_tools.cfg</span> が生成されます。</li>
+        </ol>
+
+        <h2 id="module">Module (Data & Visualization)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>項目</th>
+                    <th>内容</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>保存データ</td>
+                    <td>
+                        <span class="mono">Δ = P2 − P1</span> と、参考として <span class="mono">pre/aft</span> の両方を KeyValues
+                        で保存。<br />
+                        以後は Δ が見つかればコマンド群が機能します。
+                    </td>
+                </tr>
+                <tr>
+                    <td>可視化</td>
+                    <td>
+                        <span class="sw cyan"></span>現在位置P（縦ビコン） /
+                        <span class="sw orange"></span>写像先（P±Δ） /
+                        <span class="sw green"></span>Forward矢印 /
+                        <span class="sw red"></span>Reverse矢印 /
+                        <span class="sw violet"></span>pre(P1) /
+                        <span class="sw yellow"></span>aft(P2)
+                    </td>
+                </tr>
+                <tr>
+                    <td>依存</td>
+                    <td><span class="mono">&lt;sourcemod&gt;, &lt;sdktools&gt;, &lt;sdktools_tempents&gt;,
+                            &lt;halflife&gt;</span><br>
+                        ビーム用: <span class="mono">materials/sprites/laserbeam.vmt</span>, <span
+                            class="mono">materials/sprites/glow01.vmt</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="commands">Chat Commands</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Syntax</th>
+                    <th>説明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="mono">!tpre</span></td>
+                    <td><span class="mono">sm_tpre</span></td>
+                    <td>現在位置を P1(pre) として記録。青系の縦ビコンを表示。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!taft</span></td>
+                    <td><span class="mono">sm_taft [nextmap]</span></td>
+                    <td>P2(aft) を記録し Δ を保存。<span class="mono">info_changelevel.m_mapName</span> が無いカスタムは引数で <span
+                            class="mono">nextmap</span> を指定。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!transit</span></td>
+                    <td><span class="mono">sm_transit [nextmap]</span></td>
+                    <td>Forward: <span class="mono">P → P+Δ</span> を計算・表示。P→(P+Δ) のビーム描画。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!transit_tp</span></td>
+                    <td><span class="mono">sm_transit_tp [nextmap]</span></td>
+                    <td>Forward をテレポートで適用（P ← P+Δ）。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!rtransit</span></td>
+                    <td><span class="mono">sm_rtransit [prevmap]</span></td>
+                    <td>Reverse: <span class="mono">P → P−Δ</span> を計算・表示（Δ は <span class="mono">prevmap → 現在</span>
+                        のペアから取得）。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!rtransit_tp</span></td>
+                    <td><span class="mono">sm_rtransit_tp [prevmap]</span></td>
+                    <td>Reverse をテレポートで適用（P ← P−Δ）。</td>
+                </tr>
+                <tr>
+                    <td><span class="mono">!tvis</span></td>
+                    <td><span class="mono">sm_tvis</span></td>
+                    <td>pre / aft / Δ と、現在の P と写像先の関係を一括可視化。</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="workflow">User Workflow</h2>
+        <ol>
+            <li>（前マップ）セーフルーム等で <span class="kbd">!tpre</span> → P1 保存。</li>
+            <li>（次マップ）ロード直後に動かず <span class="kbd">!taft</span>（または <span class="kbd">!taft &lt;nextmap&gt;</span>）。Δ
+                が保存される。</li>
+            <li>検証：<span class="kbd">!transit</span> / <span class="kbd">!transit_tp</span>（順方向）、<span
+                    class="kbd">!rtransit</span> / <span class="kbd">!rtransit_tp</span>（逆方向）。</li>
+            <li>いつでも <span class="kbd">!tvis</span> で pre/aft/Δ と P±Δ の見た目を再確認。</li>
+        </ol>
+        <div class="note">
+            <strong>注意:</strong> テレポートは同一マップ内の相対移動です。壁抜けや落下に注意し、必要に応じて <span class="mono">noclip</span> 等で検証してください。
+        </div>
+
+        <h2 id="convars">ConVars</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Default</th>
+                    <th>説明</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="mono">l4d2_transit_beam_time</td>
+                    <td>6.0</td>
+                    <td>ビーム/グロウの寿命（秒）。</td>
+                </tr>
+                <tr>
+                    <td class="mono">l4d2_transit_beam_width</td>
+                    <td>4.0</td>
+                    <td>ビームの太さ。</td>
+                </tr>
+                <tr>
+                    <td class="mono">l4d2_transit_beam_height</td>
+                    <td>160.0</td>
+                    <td>縦ビコンの高さ。</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="muted">ファイル: <span class="mono">cfg/sourcemod/l4d2_transit_tools.cfg</span>（自動生成）</p>
+
+        <h2 id="datafile">Data File Format</h2>
+        <p>保存先: <span class="mono">cfg/sm_server/data/l4d2_transit_pairs.cfg</span>（KeyValues, 自動生成/更新）</p>
+        <pre><code class="mono">"TransitPairs"
+{
+  "&lt;preMap&gt;"
+  {
+    "&lt;nextMap&gt;"
+    {
+      "pre"   "x y z"
+      "aft"   "x y z"
+      "delta" "x y z"
+    }
+  }
+}
+</code></pre>
+        <p class="muted">基本は <span class="kbd">!tpre</span> → （遷移） → <span class="kbd">!taft</span> で作成。必要なら手編集も可。</p>
+
+        <h2 id="troubleshoot">Troubleshooting</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>症状</th>
+                    <th>原因/対処</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>「Δ 未登録」</td>
+                    <td>マップペアのΔが未作成。<span class="kbd">!tpre</span> → （遷移） → <span class="kbd">!taft</span> を実行。</td>
+                </tr>
+                <tr>
+                    <td>次マップ名が分からない</td>
+                    <td><span class="mono">info_changelevel</span> が無い/特殊。<span class="kbd">!taft &lt;nextmap&gt;</span>
+                        / <span class="kbd">!transit &lt;nextmap&gt;</span> のように明示。</td>
+                </tr>
+                <tr>
+                    <td>TPで壁の中/落下</td>
+                    <td>Δは相対座標差でありジオメトリ考慮なし。検証は <span class="mono">noclip</span> 推奨。公開サーバでは権限制御を。</td>
+                </tr>
+                <tr>
+                    <td>ビームが見えない</td>
+                    <td>マテリアルの precache 失敗や ConVar 値の影響を確認。ログ/ConVarを点検。</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top:24px"><a href="#top">▲ Back to top</a></p>
+        <footer>© 2025 L4D2 Transit Tools — Module & Chat Commands</footer>
+    </div>
+</body>
+
+</html>
