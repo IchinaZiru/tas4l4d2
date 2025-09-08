@@ -14,7 +14,7 @@
  *   !tvis                : visualize pre/aft/Δ and P->mapped beams
  *
  * Data file (auto-created/updated):
- *   cfg/sm_server/data/l4d2_transit_pairs.cfg
+ *   cfg/sm_server/sourcemod/data/l4d2_transit_pairs.cfg
  **************************************************/
 
 #include <sourcemod>
@@ -26,7 +26,7 @@
 #pragma newdecls required
 
 // Storage path adjusted for your server layout
-#define PAIRS_FILE_REL "cfg/sm_server/data/l4d2_transit_pairs.cfg"
+#define PAIRS_FILE_REL "cfg/sm_server/sourcemod/data/l4d2_transit_pairs.cfg"
 #define BEAM_MATERIAL  "materials/sprites/laserbeam.vmt"
 #define GLOW_MATERIAL  "materials/sprites/glow01.vmt"
 
