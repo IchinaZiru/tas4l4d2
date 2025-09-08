@@ -51,7 +51,7 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     // Use Path_Game here (points to cfg/... folder)
-    BuildPath(Path_Game, g_sPairsPath, sizeof g_sPairsPath, PAIRS_FILE_REL);
+    BuildPath(Path_SM, g_sPairsPath, sizeof g_sPairsPath, "../../%s", PAIRS_FILE_REL);
 
     RegConsoleCmd("sm_tpre", CmdPre);
     RegConsoleCmd("sm_taft", CmdAft);
@@ -161,7 +161,10 @@ public Action CmdTransit(int client, int args)
 
     float p[3];
     GetClientAbsOrigin(client, p);
-    float mapped[3] = { p[0] + delta[0], p[1] + delta[1], p[2] + delta[2] };
+    float mapped[3];
+    mapped[0] = p[0] + delta[0];
+    mapped[1] = p[1] + delta[1];
+    mapped[2] = p[2] + delta[2];
 
     PrintToChat(client, "\x05[Transit]\x01 %s → %s  P=(%.2f,%.2f,%.2f)  P+Δ=(%.2f,%.2f,%.2f)",
                 curMap, nextMap[0] ? nextMap : "(unknown)", p[0], p[1], p[2], mapped[0], mapped[1], mapped[2]);
@@ -224,12 +227,18 @@ public Action CmdRTransit(int client, int args)
 
     float p[3];
     GetClientAbsOrigin(client, p);
-    float mapped[3] = { p[0] - delta[0], p[1] - delta[1], p[2] - delta[2] };
+    float mapped[3];
+    mapped[0] = p[0] - delta[0];
+    mapped[1] = p[1] - delta[1];
+    mapped[2] = p[2] - delta[2];
 
     PrintToChat(client, "\x05[Transit]\x01 %s ← %s  P=(%.2f,%.2f,%.2f)  P-Δ=(%.2f,%.2f,%.2f)",
                 prevMap, curMap, p[0], p[1], p[2], mapped[0], mapped[1], mapped[2]);
 
-    float neg[3] = { -delta[0], -delta[1], -delta[2] };
+    float neg[3];
+    neg[0] = -delta[0];
+    neg[1] = -delta[1];
+    neg[2] = -delta[2];
     VisualizeAll(prevMap, curMap, p, mapped, neg, true);
     return Plugin_Handled;
 }
@@ -291,7 +300,10 @@ public Action CmdVisualize(int client, int args)
 
         float p[3];
         GetClientAbsOrigin(client, p);
-        float mapped[3] = { p[0] + delta[0], p[1] + delta[1], p[2] + delta[2] };
+        float mapped[3];
+        mapped[0] = p[0] + delta[0];
+        mapped[1] = p[1] + delta[1];
+        mapped[2] = p[2] + delta[2];
         VisualizeAll(curMap, nextMap[0] ? nextMap : "(unknown)", p, mapped, delta, false);
 
         PrintToChat(client, "\x05[Transit]\x01 可視化: pre / aft / Δ を表示しました。");
@@ -462,7 +474,10 @@ void VisualizeAll(const char[] fromMap, const char[] toMap, const float p[3], co
 
 void DrawBeacon(const float pos[3], const int color[4])
 {
-    float top[3] = { pos[0], pos[1], pos[2] + GetConVarFloat(gCvarBeamHeight) };
+    float top[3];
+    top[0] = pos[0];
+    top[1] = pos[1];
+    top[2] = pos[2] + GetConVarFloat(gCvarBeamHeight);
 
     TE_SetupBeamPoints(pos, top, g_iBeamModel, 0, 0, 0,
                        GetConVarFloat(gCvarBeamTime),
