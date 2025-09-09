@@ -1,0 +1,41 @@
+"TransitPairs"
+{
+  // prev: c1m1_hotel
+  "c1m1_hotel"
+  {
+    // next: c1m2_streets
+    "c1m2_streets"
+    {
+      // P1 (pre) ＝ 前マップで記録した基準位置
+      "pre"   "2136.000 4472.000 1248.000"
+
+      // P2 (aft) ＝ 次マップで記録した基準位置
+      "aft"   "2504.000 5128.000 512.000"
+
+      // Δ = P2 - P1 （Forward時は P+Δ、Reverse時は P-Δ）
+      "delta" "368.000 656.000 -736.000"
+    }
+  }
+  "c5m1_waterfront"
+  {
+    "c5m2_park"
+    {
+      "pre"   "-3904.000 -1264.000 -288.000"
+      "aft"   "-3904.000 -1264.000 -288.000"
+      "delta" "0.000 0.000 0.000"
+    }
+  }
+  
+  //custom campaing 
+  //reference from bsp file name
+
+  "custom_map prev name"
+  {
+    "custom_map next name"
+    {
+      "pre"   "1024.000 -2048.000 128.000"
+      "aft"   "-512.000 4096.000 160.000"
+      "delta" "-1536.000 6144.000 32.000"
+    }
+  }
+}
