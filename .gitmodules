@@ -1,3 +1,6 @@
 [submodule "third_party/tas_kit"]
 	path = third_party/tas_kit
 	url = https://github.com/sw1ft747/TAS-Kit.git
+[submodule "third_party/Left4DHooks"]
+	path = third_party/Left4DHooks
+	url = https://github.com/SilvDev/Left4DHooks.git
