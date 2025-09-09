@@ -1,7 +1,16 @@
-// l4d2_autohunter_mr.sp
-// L4D2: Hunter movement Record/Play (MR) + Auto Hunter Boost (ETA-based)
-// Requires: SourceMod 1.11+, SDKHooks, SDKTools (Recommended: Left4DHooks)
-// Build: spcomp l4d2_autohunter_mr.sp
+/*************************************************
+ * l4d2_autohunter_mr.sp
+ *  - L4D2: Hunter movement Record/Play (MR) + Auto Hunter Boost (ETA-based)
+ *
+ * Commands:
+ *   sm_hmr_rec                               : Record movement of the nearest Hunter to the configured MR file.
+ *   sm_hmr_play                              : Play back movement for the nearest Hunter from the MR file.
+ *   sm_autohb                                : Toggle Auto Hunter Boost on/off.
+ *   sm_hbtune <shove> <jump> <advance>       : Adjust shove lead, jump lead, and advance timing values in real time.
+ *
+ * Data file (auto-created/updated):
+ *   cfg/sm_server/data/l4d2_transit_pairs.cfg
+ **************************************************/
 
 #include <sourcemod>
 #include <sdktools>
@@ -24,10 +33,10 @@ static float g_cdUntil[MAXPLAYERS + 1];
 public Plugin myinfo =
 {
     name        = "L4D2 AutoHunter MR + Boost",
-    author      = "network + assistant",
+    author      = "IchinaZiru",
     description = "Record/Play Hunter with MR, then auto shove+jump to trigger Hunter boost",
-    version     = "0.1",
-    url         = ""
+    version     = "0.1 Beta",
+    url         = "https://github.com/IchinaZiru/tas4l4d"
 };
 
 public void OnPluginStart()
@@ -128,8 +137,12 @@ int FindNearestIncomingHunter(int client)
         float velH[3];
         GetEntPropVector(i, Prop_Data, "m_vecVelocity", velH);
 
-        float toMe[3] = { posC[0] - posH[0], posC[1] - posH[1], 0.0 };
-        float dist    = SquareRoot(toMe[0] * toMe[0] + toMe[1] * toMe[1]);
+        float toMe[3];
+        toMe[0]    = posC[0] - posH[0];
+        toMe[1]    = posC[1] - posH[1];
+        toMe[2]    = 0.0;
+
+        float dist = SquareRoot(toMe[0] * toMe[0] + toMe[1] * toMe[1]);
         if (dist > range) continue;
 
         Normalize2D(velH);
@@ -159,9 +172,13 @@ float EstimateETA(int client, int hunter)
     GetClientAbsOrigin(hunter, posH);
     GetEntPropVector(hunter, Prop_Data, "m_vecVelocity", velH);
 
-    float toMe[3] = { posC[0] - posH[0], posC[1] - posH[1], 0.0 };
-    float dist    = SquareRoot(toMe[0] * toMe[0] + toMe[1] * toMe[1]);
-    float speed   = GetSpeed2D(hunter);
+    float toMe[3];
+    toMe[0]     = posC[0] - posH[0];
+    toMe[1]     = posC[1] - posH[1];
+    toMe[2]     = 0.0;
+
+    float dist  = SquareRoot(toMe[0] * toMe[0] + toMe[1] * toMe[1]);
+    float speed = GetSpeed2D(hunter);
     if (speed <= 1.0) return -1.0;
 
     float eta = dist / speed - gCvarAdvance.FloatValue;
