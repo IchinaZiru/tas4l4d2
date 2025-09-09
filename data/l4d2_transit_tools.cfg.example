@@ -1,0 +1,11 @@
+// L4D2 Transit Tools — ConVars (auto-generated)
+// File: cfg/sm_server/sourcemod/l4d2_transit_tools.cfg
+
+// Display duration (seconds): lifetime of beams and glow.
+l4d2_transit_beam_time "6.0"
+
+// Beam thickness (game units): larger values make it thicker.
+l4d2_transit_beam_width "4.0"
+
+// Vertical beacon height (game units): how far it extends from pos.z.
+l4d2_transit_beam_height "160.0"
