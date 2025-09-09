@@ -197,13 +197,6 @@
             </ul>
         </div>
 
-        <div>
-            <span class="chip">Forward/Reverse Mapping</span>
-            <span class="chip">Teleport (optional)</span>
-            <span class="chip">Beam Visualization</span>
-            <span class="chip mono">Data: cfg/sm_server/data/l4d2_transit_pairs.cfg</span>
-        </div>
-
         <h2 id="about">About</h2>
         <p>
             本プラグインは、<strong>前マップの基準点 P1(pre)</strong> と <strong>次マップの基準点 P2(aft)</strong> を1度記録し、
@@ -213,10 +206,10 @@
 
         <h2 id="install">Install</h2>
         <ol>
-            <li>コンパイル済み <span class="mono">l4d2_transit_tools.smx</span> を <span
-                    class="mono">cfg/sm_server/plugins</span> に配置。</li>
-            <li><strong>初回のみ</strong>、保存先フォルダ <span class="mono">cfg/sm_server/data/</span> を作成（空で可）。</li>
-            <li>サーバ再起動。ConVar自動cfg <span class="mono">cfg/sourcemod/l4d2_transit_tools.cfg</span> が生成されます。</li>
+            <li>コンパイル済み <span class="mono">l4d2_transit.smx</span> を <span
+                    class="mono">cfg/sm_server/sourcemod/plugins</span> に配置。</li>
+            <li><strong>初回のみ</strong>、保存先フォルダ <span class="mono">cfg/sm_server/sourcemod/data/</span> を作成（空で可）。</li>
+            <li>サーバ再起動。ConVar自動cfg <span class="mono">cfg/sm_server/sourcemod/l4d2_transit_tools.cfg</span> が生成されます。</li>
         </ol>
 
         <h2 id="module">Module (Data & Visualization)</h2>
@@ -347,7 +340,7 @@
                 </tr>
             </tbody>
         </table>
-        <p class="muted">ファイル: <span class="mono">cfg/sourcemod/l4d2_transit_tools.cfg</span>（自動生成）</p>
+        <p class="muted">ファイル: <span class="mono">cfg/sm_server/sourcemod/l4d2_transit_tools.cfg</span>（自動生成）</p>
 
         <h2 id="datafile">Data File Format</h2>
         <p>保存先: <span class="mono">cfg/sm_server/sourcemod/data/l4d2_transit_pairs.cfg</span>（KeyValues, 自動生成/更新）</p>
