@@ -51,7 +51,7 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
     // Use Path_Game here (points to cfg/... folder)
-    BuildPath(Path_SM, g_sPairsPath, sizeof g_sPairsPath, "../../%s", PAIRS_FILE_REL);
+    BuildPath(Path_Game, g_sPairsPath, sizeof g_sPairsPath, PAIRS_FILE_REL);
 
     RegConsoleCmd("sm_tpre", CmdPre);
     RegConsoleCmd("sm_taft", CmdAft);
