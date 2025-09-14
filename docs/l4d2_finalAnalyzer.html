@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>Finale Analyzer — Module & Menu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0c0c0c; --panel:#121212; --ink:#e6e6e6; --muted:#a5a5a5;
+      --line:#242424; --accent:#d4b000; --hl:#1a1a1a; --chip:#1a1a1a;
+      --green:#41d67a; --orange:#ffb155; --cyan:#57c7ff; --red:#ff6b6b; --violet:#c468ff; --yellow:#ffd84f;
+    }
+    html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;line-height:1.62}
+    .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
+    h1{font-size:28px;margin:0 0 6px;color:var(--accent)}
+    h2{font-size:22px;margin:28px 0 8px}
+    h3{font-size:18px;margin:20px 0 6px}
+    p{margin:10px 0}
+    table{width:100%;border-collapse:collapse;margin:10px 0 20px;background:var(--panel)}
+    th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+    th{background:var(--hl);text-align:left}
+    code,pre{background:#151515;border:1px solid var(--line);border-radius:6px}
+    code{padding:.15em .4em}
+    pre{padding:12px;overflow:auto}
+    .toc{background:var(--panel);border:1px solid var(--line);padding:10px 12px}
+    .muted{color:var(--muted)}
+    .chip{display:inline-block;background:var(--chip);border:1px solid var(--line);padding:4px 8px;border-radius:999px;margin-right:6px;margin-bottom:6px;font-size:12px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .sw{display:inline-block;width:.9em;height:.9em;border-radius:2px;vertical-align:-1px;margin-right:.4em}
+    .sw.cyan{background:var(--cyan)} .sw.green{background:var(--green)} .sw.red{background:var(--red)}
+    .sw.violet{background:var(--violet)} .sw.yellow{background:var(--yellow)} .sw.orange{background:var(--orange)}
+    .note{background:#131313;border-left:3px solid var(--accent);padding:10px 12px}
+    .kbd{background:#202020;border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+    footer{margin:40px 0 20px;color:var(--muted);font-size:12px}
+    a{color:#86cbff;text-decoration:none}
+
+    /* ========== Log Box (Dump Output) ========== */
+    .logbox{
+      border:1px solid var(--line);
+      background:var(--panel);
+      border-radius:10px;
+      overflow:hidden;
+      margin:10px 0 20px;
+    }
+    .logbox__head{
+      display:flex;align-items:center;gap:8px;justify-content:space-between;
+      padding:10px 12px;border-bottom:1px solid var(--line);background:var(--hl)
+    }
+    .logbox__path{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted)}
+    .logbox__tools{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{
+      appearance:none;border:1px solid var(--line);background:#1a1a1a;color:var(--ink);
+      padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer
+    }
+    .btn:hover{background:#1e1e1e}
+    .btn:active{transform:translateY(1px)}
+    .logbox__body{position:relative}
+    .logbox pre{
+      margin:0;max-height:320px;overflow:auto;border-radius:0;border:none;background:#0f0f0f;
+      white-space:pre; /* default: nowrap scrolling */
+    }
+    .logbox pre.wrap{white-space:pre-wrap;word-break:break-word}
+    .fade-top,.fade-bottom{
+      position:absolute;left:0;right:0;height:18px;pointer-events:none
+    }
+    .fade-top{top:0;background:linear-gradient(180deg,var(--panel),#0000)}
+    .fade-bottom{bottom:0;background:linear-gradient(0deg,var(--panel),#0000)}
+    .tag{display:inline-block;padding:.05em .45em;border-radius:999px;border:1px solid var(--line);background:#191919;font-size:12px;margin-right:.4em}
+    .tag.panic{background:#1e1610;color:#ffb155}
+    .tag.pause{background:#141616;color:#a5e1e1}
+    .tag.tank{background:#1a1212;color:#ff8a8a}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <h1 id="top">Finale Analyzer — Module & Menu</h1>
+    <p class="muted">L4D2 のフィナーレを自動監視し、CI/Tank スポーンを可視化＆ダンプ保存。波（PANIC/PAUSE/TANK/DELAY）も自動セグメント。</p>
+
+    <div class="toc">
+      <strong>Contents</strong>
+      <ul>
+        <li><a href="#about">About</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#usage">Usage（Menu & Commands）</a></li>
+        <li><a href="#convars">ConVars</a></li>
+        <li><a href="#output">Dump Output</a></li>
+        <li><a href="#logic">How It Works</a></li>
+        <li><a href="#troubleshoot">Troubleshooting</a></li>
+        <li><a href="#changelog">Changelog</a></li>
+      </ul>
+    </div>
+
+    <h2 id="about">About</h2>
+    <ul>
+      <li><strong>Finale開始を自動検知</strong>し、その瞬間から CI/Tank のスポーンを収集・可視化・保存。</li>
+      <li>CI の湧きレートと無湧き時間から <code>PANIC</code>/<code>PAUSE</code>/<code>DELAY</code> を推定、<code>TANK</code> は専用区間。</li>
+      <li>結果は <span class="mono">ems/final_stage/&lt;map&gt;_dump.txt</span> に<strong>追記</strong>。</li>
+      <li>ゲーム内 <strong>Panel メニュー</strong>（数字キー 1–5）で操作：<span class="mono">sm_fa</span> / <span class="mono">fa_menu</span> / チャット <span class="mono">!fa</span></li>
+    </ul>
+    <p class="muted">Version: <span class="chip">v1.0.1</span> 　Requires: <span class="chip">SourceMod 1.11+</span>　Deps: <span class="chip">&lt;sdktools&gt;</span> <span class="chip">&lt;sdkhooks&gt;</span></p>
+
+    <h2 id="install">Install</h2>
+    <ol>
+      <li><span class="mono">finale_analyzer.smx</span> を <span class="mono">addons/sourcemod/plugins/</span> に配置。</li>
+      <li>マップ変更 or <span class="mono">sm plugins load finale_analyzer</span>。</li>
+      <li>初回実行時に <span class="mono">ems/</span> と <span class="mono">ems/final_stage/</span> を自動作成します。</li>
+    </ol>
+
+    <h2 id="usage">Usage（Menu & Commands）</h2>
+    <table>
+      <thead><tr><th>操作</th><th>やり方</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>メニュー表示</td>
+          <td class="mono">sm_fa / fa_menu / !fa</td>
+          <td>Panel メニューを開きます（数字キー <strong>1–5</strong> で選択）。</td>
+        </tr>
+        <tr>
+          <td>メニュー項目</td>
+          <td class="mono">1: Start/Stop<br>2: Draw ON/OFF<br>3: Dump Now<br>4: Clear Markers<br>5: Exit</td>
+          <td>
+            1: 監視の開始/停止。2: DebugDraw の切替。<br>
+            3: 現時点の統計をダンプに追記（波は一旦閉じて即再開）。<br>
+            4: 画面の描画をクリア（<span class="mono">DebugDrawClear()</span>）。<br>
+          </td>
+        </tr>
+        <tr>
+          <td>コンソール</td>
+          <td class="mono">fa_dump_now</td>
+          <td>メニューの「Dump Now」と同等。マップごとのダンプに追記します。</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note"><strong>Note:</strong> 本プラグインは <em>ClientMenu 用の .cfg</em> は不要です。メニューは <strong>プラグイン内の Panel</strong> で完結します。</div>
+
+    <h2 id="convars">ConVars</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Default</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">fa_enable</td><td>1</td><td>プラグイン有効化 (1/0)。</td></tr>
+        <tr><td class="mono">fa_draw</td><td>1</td><td>DebugDraw 可視化 ON/OFF。</td></tr>
+        <tr><td class="mono">fa_draw_time</td><td>15.0</td><td>描画の寿命（秒）。</td></tr>
+        <tr><td class="mono">fa_panic_rate</td><td>1.5</td><td>PANIC 判定の CI 湧き/秒しきい値。</td></tr>
+        <tr><td class="mono">fa_pause_gap</td><td>4.0</td><td>PAUSE 判定の連続無湧き秒数。</td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="output">Dump Output</h2>
+
+    <!-- New: pretty log box with tools -->
+    <div class="logbox" role="region" aria-label="Dump Output">
+      <div class="logbox__head">
+        <div class="logbox__path">保存先：<span class="mono">ems/final_stage/&lt;map&gt;_dump.txt</span>（例：<span class="mono">c2m5_concert_dump.txt</span>）</div>
+        <div class="logbox__tools">
+          <button class="btn" type="button" data-wrap aria-pressed="false" title="折り返し表示の切替">Wrap</button>
+          <button class="btn" type="button" data-copy title="内容をコピー">Copy</button>
+        </div>
+      </div>
+      <div class="logbox__body">
+        <div class="fade-top"></div>
+        <pre id="dump-sample" class="mono" data-log>==== Finale START (event:finale_start) map=c2m5_concert time=12345.678 ====
+WAVE_START 1 DELAY time=12345.678 reason=low-rate
+CI 1234.5 678.9 12.3 wave=1 kind=DELAY time=12346.100
+TANK_SPAWN #1 1200.0 600.0 20.0 time=12360.000
+WAVE_END 1 DELAY dur=14.322 ci=27 time=12360.000
+WAVE_START 2 TANK time=12360.000 reason=tank_spawn
+TANK_KILLED time=12390.000
+WAVE_END 2 TANK dur=30.000 ci=0 time=12390.000
+==== Finale STOP (finale_end) time=12450.000 ====</pre>
+        <div class="fade-bottom"></div>
+      </div>
+    </div>
+
+    <p class="muted">
+      例：<span class="tag panic">PANIC</span> は高レート湧き、<span class="tag pause">PAUSE</span> は連続無湧き、<span class="tag tank">TANK</span> は Tank 在存区間として扱われます。
+    </p>
+
+    <h2 id="logic">How It Works</h2>
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Finale検知</td>
+          <td><span class="mono">finale_start / finale_win / mission_lost / finale_vehicle_leaving</span> をフック。<br>加えて <span class="mono">trigger_finale</span> の I/O（<span class="mono">FinaleStart / FinaleEscapeStart</span>）。</td>
+        </tr>
+        <tr>
+          <td>CI検知</td>
+          <td><span class="mono">infected</span> エンティティの <span class="mono">SDKHook_SpawnPost</span> で座標取得→可視化（円＋テキスト）・ダンプ。</td>
+        </tr>
+        <tr>
+          <td>波推定</td>
+          <td>0.5秒ごとに直近の湧き数をバケット集計。<br><code>rate ≥ fa_panic_rate</code> → <strong>PANIC</strong>、連続無湧き <code>≥ fa_pause_gap</code> → <strong>PAUSE</strong>、その他は <strong>DELAY</strong>。<br>Tank は <span class="mono">tank_spawn</span>〜<span class="mono">tank_killed</span> を <strong>TANK</strong> 区間として扱う。</td>
+        </tr>
+        <tr>
+          <td>可視化</td>
+          <td>VScript の <span class="mono">DebugDrawCircle / DebugDrawText</span> を <span class="mono">AcceptEntityInput(0,"RunScriptCode")</span> で呼出。寿命は <span class="mono">fa_draw_time</span>。<br>
+              <span class="sw green"></span>CI / <span class="sw red"></span>TANK（ラベル付）を描画。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="troubleshoot">Troubleshooting</h2>
+    <table>
+      <thead><tr><th>症状</th><th>原因 / 対処</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>メニューが出ない</td>
+          <td><span class="mono">sm plugins list</span> でロード確認。エラーログ（<span class="mono">addons/sourcemod/logs/</span>）を確認。権限環境では管理フラグを付与。</td>
+        </tr>
+        <tr>
+          <td>ダンプが生成されない</td>
+          <td><span class="mono">ems/</span> と <span class="mono">ems/final_stage/</span> の書込権限を確認。Finale 監視が開始されているか（メニューの状態）確認。</td>
+        </tr>
+        <tr>
+          <td>描画が見えない</td>
+          <td><span class="mono">fa_draw 1</span> を確認。描画は時間で消えるため <span class="mono">fa_draw_time</span> を調整。必要に応じて「Clear Markers」後に再確認。</td>
+        </tr>
+        <tr>
+          <td>波の判定が粗い</td>
+          <td>独特な湧き方のマップではしきい値調整が必要。<span class="mono">fa_panic_rate</span> / <span class="mono">fa_pause_gap</span> を調整。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="changelog">Changelog</h2>
+    <ul>
+      <li><strong>v1.0.1</strong> — 初版。Finale 自動検知、CI/Tank 可視化、波セグメント、ダンプ、Panel メニュー実装。</li>
+    </ul>
+
+    <p style="margin-top:24px"><a href="#top">▲ Back to top</a></p>
+    <footer>© 2025 Finale Analyzer — Module & Menu</footer>
+  </div>
+
+  <!-- Safe, minimal JS (no external requests) -->
+  <script>
+    (function(){
+      const pre = document.getElementById('dump-sample');
+      const copyBtn = document.querySelector('[data-copy]');
+      const wrapBtn = document.querySelector('[data-wrap]');
+
+      function setWrap(on){
+        pre.classList.toggle('wrap', !!on);
+        wrapBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        wrapBtn.textContent = on ? 'Unwrap' : 'Wrap';
+      }
+
+      wrapBtn.addEventListener('click', function(){
+        setWrap(!pre.classList.contains('wrap'));
+      });
+
+      copyBtn.addEventListener('click', function(){
+        const text = pre.textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(()=> {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(()=>copyBtn.textContent='Copy', 900);
+          });
+        } else {
+          // Fallback for very old environments
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove();
+          copyBtn.textContent = 'Copied!';
+          setTimeout(()=>copyBtn.textContent='Copy', 900);
+        }
+      });
+
+      // Initial state: keep raw scrolling (no wrap)
+      setWrap(false);
+    })();
+  </script>
+</body>
+</html>
