@@ -348,16 +348,13 @@ void CloseWave()
     }
 }
 
-// 文字列は戻り値NG → 出力バッファ方式
+// ---- 修正ポイント #1: フォールスルーしない実装 ----
 stock void WaveToStr(WaveKind k, char[] out, int maxlen)
 {
-    switch (k)
-    {
-        case WAVE_PANIC: strcopy(out, maxlen, "PANIC");
-        case WAVE_TANK:  strcopy(out, maxlen, "TANK");
-        case WAVE_PAUSE: strcopy(out, maxlen, "PAUSE");
-        default:         strcopy(out, maxlen, "DELAY");
-    }
+    static const char names[][] = { "DELAY", "PANIC", "TANK", "PAUSE" };
+    int idx = view_as<int>(k);
+    if (idx < 0 || idx >= sizeof(names)) idx = 0;
+    strcopy(out, maxlen, names[idx]);
 }
 
 // ------------------------------------------------------------
@@ -535,6 +532,7 @@ public int MenuH(Menu menu, MenuAction action, int client, int item)
     if (g_bMenuOpen[client]) Cmd_Menu(client, 0);
     return 0;
 }
+
 
 // ------------------------------------------------------------
 // ユーティリティ
