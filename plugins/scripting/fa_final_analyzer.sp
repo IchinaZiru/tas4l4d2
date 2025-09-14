@@ -6,8 +6,8 @@
  *  - 結果を ems/final_stage/<map>_dump.txt に自動追記
  *  - 簡易メニュー: sm_fa / チャット !fa
  *
- *  Author: IchinaZiru
- *  Version: 1.0.0
+ *  Author: Ichinaziru
+ *  Version: 1.0.1
  */
 
 #pragma semicolon 1
@@ -18,7 +18,7 @@
 #include <sdkhooks>
 
 #define PL_NAME        "Finale Analyzer"
-#define PL_VER         "1.0.0"
+#define PL_VER         "1.0.1"
 
 // ========= ConVars =========
 ConVar g_cvEnable;
@@ -63,10 +63,10 @@ bool g_bMenuOpen[MAXPLAYERS + 1];
 public Plugin myinfo =
 {
     name        = PL_NAME,
-    author      = "you + ChatGPT",
+    author      = "Ichinaziru",
     description = "Auto-logs/visualises CI & Tank spawns in finales and writes a dump file.",
     version     = PL_VER,
-    url         = ""
+    url         = "https://github.com/IchinaZiru/tas4l4d"
 };
 
 public void OnPluginStart()
@@ -98,9 +98,6 @@ public void OnPluginStart()
     // マップ切り替えで後始末&準備
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
     HookEvent("round_end",   Event_RoundEnd,   EventHookMode_PostNoCopy);
-
-    // エンティティ生成監視（CI検知）
-    SDKHookEx(OnEntityCreatedEx);
 
     PrintToServer("[%s] v%s loaded.", PL_NAME, PL_VER);
 }
@@ -164,8 +161,9 @@ void StartFinaleWatch(const char[] how)
     g_iTankCount      = 0;
     g_A_SeenPoints.Clear();
 
+    char map[64]; GetMapNameEx(map, sizeof map);
     PrintToServer("[FA] Finale watch started (%s).", how);
-    LogToDump("\n==== Finale START (%s) map=%s time=%.3f ====\n", how, GetMapNameEx(), g_fFinaleStartGT);
+    LogToDump("\n==== Finale START (%s) map=%s time=%.3f ====\n", how, map, g_fFinaleStartGT);
 
     // 監視タイマー（0.5sごとにレートで波種別を推定）
     CreateTimer(0.5, TMR_Segment, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -202,13 +200,11 @@ public Action TMR_Segment(Handle timer, any data)
     {
         if (rate >= g_cvMinPanicRate.FloatValue)
         {
-            // PANICへ
             if (g_eCurrentWave != WAVE_PANIC)
                 SwitchWave(WAVE_PANIC, "rate>=panic");
         }
         else
         {
-            // 無湧きが一定秒続いたら PAUSE
             static float s_fNoSpawnStart = 0.0;
             if (g_iSpawnInLastBucket == 0)
             {
@@ -238,19 +234,23 @@ public Action TMR_Segment(Handle timer, any data)
 public void Event_TankSpawn(Event e, const char[] name, bool nb)
 {
     if (!g_bFinaleActive) return;
-
     g_bTankAlive = true;
     g_iTankCount++;
 
-    int tank = e.GetInt("tankid");
-    float pos[3]; GetEntOriginSafe(tank, pos);
+    int tank = -1;
+    int userid = e.GetInt("userid");
+    if (userid) tank = GetClientOfUserId(userid);
+
+    float pos[3];
+    if (tank > 0 && IsClientInGame(tank))
+        GetClientAbsOrigin(tank, pos);
+    else
+        GetEntOriginSafe(FindEntityByClassname(-1, "tank"), pos); // フォールバック
 
     char t[64]; GetClock(t, sizeof t);
     PrintToServer("[FA] TANK #%d SPAWN @ (%.1f %.1f %.1f) [%s]", g_iTankCount, pos[0],pos[1],pos[2], t);
     LogToDump("TANK_SPAWN #%d %.1f %.1f %.1f time=%.3f\n", g_iTankCount, pos[0],pos[1],pos[2], GetGameTime());
-
-    DrawMarker(pos, {255,64,64}, "TANK");
-
+    DrawMarker(pos, 255, 64, 64, "TANK");
     SwitchWave(WAVE_TANK, "tank_spawn");
 }
 
@@ -263,8 +263,6 @@ public void Event_TankKilled(Event e, const char[] name, bool nb)
     PrintToServer("[FA] TANK DOWN [%s]", t);
     LogToDump("TANK_KILLED time=%.3f\n", GetGameTime());
 
-    // Tank終了直後はたいていPAUSE→PANICへ遷移するので、
-    // いったん DELAY としておき、レート側の判定でPANIC/PAUSEへ遷移させる
     SwitchWave(WAVE_DELAY, "tank_killed");
 }
 
@@ -276,7 +274,6 @@ public void OnEntityCreated(int entity, const char[] classname)
     if (!g_bFinaleActive) return;
     if (StrEqual(classname, "infected"))
     {
-        // spawn直後は座標が入ってないことがあるので次フレームで読む
         SDKHook(entity, SDKHook_SpawnPost, OnCISpawned);
     }
 }
@@ -294,18 +291,19 @@ public void OnCISpawned(int ent)
 
     char t[64]; GetClock(t, sizeof t);
 
-    PrintToServer("[FA] CI @ (%.1f %.1f %.1f) wave=%d kind=%d [%s]",
-        pos[0],pos[1],pos[2], g_iWaveIndex, g_eCurrentWave, t);
+    char wname[8]; WaveToStr(g_eCurrentWave, wname, sizeof wname);
+    PrintToServer("[FA] CI @ (%.1f %.1f %.1f) wave=%d kind=%s [%s]",
+        pos[0],pos[1],pos[2], g_iWaveIndex, wname, t);
 
-    LogToDump("CI %.1f %.1f %.1f wave=%d kind=%d time=%.3f\n",
-        pos[0],pos[1],pos[2], g_iWaveIndex, g_eCurrentWave, GetGameTime());
+    LogToDump("CI %.1f %.1f %.1f wave=%d kind=%s time=%.3f\n",
+        pos[0],pos[1],pos[2], g_iWaveIndex, wname, GetGameTime());
 
     // 既知ポイントへの登録と可視化（近傍重複は省く）
     if (RegisterPointIfNew(pos))
     {
         if (g_cvDraw.BoolValue)
         {
-            DrawMarker(pos, {80,200,80}, "CI");
+            DrawMarker(pos, 80, 200, 80, "CI");
         }
     }
 }
@@ -325,8 +323,9 @@ void SwitchWave(WaveKind next, const char[] why)
     g_iWaveIndex++;
     g_fWaveStartGT = GetGameTime();
 
-    PrintToServer("[FA] >>> Wave %d START kind=%s (%s)", g_iWaveIndex, WaveToStr(next), why);
-    LogToDump("WAVE_START %d %s time=%.3f reason=%s\n", g_iWaveIndex, WaveToStr(next), g_fWaveStartGT, why);
+    char wname[8]; WaveToStr(next, wname, sizeof wname);
+    PrintToServer("[FA] >>> Wave %d START kind=%s (%s)", g_iWaveIndex, wname, why);
+    LogToDump("WAVE_START %d %s time=%.3f reason=%s\n", g_iWaveIndex, wname, g_fWaveStartGT, why);
 
     g_iWaveCISpawns = 0;
 }
@@ -338,32 +337,33 @@ void CloseWave()
     float now = GetGameTime();
     float dur = now - g_fWaveStartGT;
 
-    // Wave 0（finale開始直後未確定）はスキップ
     if (g_iWaveIndex > 0)
     {
+        char wname[8]; WaveToStr(g_eCurrentWave, wname, sizeof wname);
         PrintToServer("[FA] <<< Wave %d END kind=%s  dur=%.2fs  ci=%d",
-            g_iWaveIndex, WaveToStr(g_eCurrentWave), dur, g_iWaveCISpawns);
+            g_iWaveIndex, wname, dur, g_iWaveCISpawns);
 
         LogToDump("WAVE_END %d %s dur=%.3f ci=%d time=%.3f\n",
-            g_iWaveIndex, WaveToStr(g_eCurrentWave), dur, g_iWaveCISpawns, now);
+            g_iWaveIndex, wname, dur, g_iWaveCISpawns, now);
     }
 }
 
-const char[] WaveToStr(WaveKind k)
+// 文字列は戻り値NG → 出力バッファ方式
+stock void WaveToStr(WaveKind k, char[] out, int maxlen)
 {
     switch (k)
     {
-        case WAVE_PANIC: return "PANIC";
-        case WAVE_TANK:  return "TANK";
-        case WAVE_PAUSE: return "PAUSE";
-        default:         return "DELAY";
+        case WAVE_PANIC: strcopy(out, maxlen, "PANIC");
+        case WAVE_TANK:  strcopy(out, maxlen, "TANK");
+        case WAVE_PAUSE: strcopy(out, maxlen, "PAUSE");
+        default:         strcopy(out, maxlen, "DELAY");
     }
 }
 
 // ------------------------------------------------------------
 // 可視化（VScript DebugDraw* を RunScriptCode で呼ぶ）
 // ------------------------------------------------------------
-void DrawMarker(const float pos[3], int rgb[3], const char[] label)
+void DrawMarker(const float pos[3], int r, int g, int b, const char[] label)
 {
     if (!g_cvDraw.BoolValue) return;
 
@@ -373,7 +373,7 @@ void DrawMarker(const float pos[3], int rgb[3], const char[] label)
     char code[256];
     Format(code, sizeof code,
         "DebugDrawCircle(Vector(%.1f, %.1f, %.1f), 40, %d, %d, %d, false, %.1f)",
-        pos[0], pos[1], pos[2], rgb[0], rgb[1], rgb[2], life);
+        pos[0], pos[1], pos[2], r, g, b, life);
     SetVariantString(code);
     AcceptEntityInput(0, "RunScriptCode");
 
@@ -410,15 +410,18 @@ bool RegisterPointIfNew(const float pos[3])
 // ------------------------------------------------------------
 void BuildDumpPath()
 {
-    char emsdir[PLATFORM_MAX_PATH];
-    BuildPath(Path_Game, emsdir, sizeof emsdir, "ems");
-    if (!DirExists(emsdir)) CreateDirectory(emsdir, 511, true);
+    // 相対パスはゲームディレクトリ基準（left4dead2/）
+    if (!DirExists("ems"))
+        CreateDirectory("ems", 511, false);
 
-    char outdir[PLATFORM_MAX_PATH];
-    BuildPath(Path_Game, outdir, sizeof outdir, "ems/final_stage");
-    if (!DirExists(outdir)) CreateDirectory(outdir, 511, true);
+    if (!DirExists("ems/final_stage"))
+        CreateDirectory("ems/final_stage", 511, false);
 
-    BuildPath(Path_Game, g_sDumpPath, sizeof g_sDumpPath, "ems/final_stage/%s_dump.txt", GetMapNameEx());
+    char map[64];
+    GetMapNameEx(map, sizeof map);
+
+    // 例: left4dead2/ems/final_stage/c2m5_concert_dump.txt
+    Format(g_sDumpPath, sizeof g_sDumpPath, "ems/final_stage/%s_dump.txt", map);
 }
 
 void LogToDump(const char[] fmt, any ...)
@@ -426,7 +429,6 @@ void LogToDump(const char[] fmt, any ...)
     static char buffer[1024];
     VFormat(buffer, sizeof buffer, fmt, 2);
 
-    // 追記
     File f = OpenFile(g_sDumpPath, "a");
     if (f != null)
     {
@@ -451,7 +453,8 @@ public Action Cmd_DumpNow(int client, int args)
     LogToDump("DUMP_NOW total_ci=%d tanks=%d seen_pts=%d time=%.3f\n",
         g_iTotalCISpawns, g_iTankCount, g_A_SeenPoints.Length, GetGameTime());
 
-    PrintToChatAll("\x04[FA]\x01 Dumped to: ems/final_stage/%s_dump.txt", GetMapNameEx());
+    char map[64]; GetMapNameEx(map, sizeof map);
+    PrintToChatAll("\x04[FA]\x01 Dumped to: ems/final_stage/%s_dump.txt", map);
 
     // 再開
     g_eCurrentWave  = cur;
@@ -471,12 +474,12 @@ public Action Cmd_Menu(int client, int args)
     Panel p = new Panel();
     p.SetTitle("Finale Analyzer\n ");
 
-    char line[128];
+    char line[128], map[64]; GetMapNameEx(map, sizeof map);
 
     Format(line, sizeof line, "Monitoring: %s", g_bFinaleActive ? "ON" : "OFF");
     p.DrawText(line);
 
-    Format(line, sizeof line, "Dump file: ems/final_stage/%s_dump.txt", GetMapNameEx());
+    Format(line, sizeof line, "Dump file: ems/final_stage/%s_dump.txt", map);
     p.DrawText(line);
 
     p.DrawText(" ");
@@ -488,7 +491,7 @@ public Action Cmd_Menu(int client, int args)
     p.DrawItem("Exit");
 
     g_bMenuOpen[client] = true;
-    p.Send(client, MenuH, 45.0);
+    p.Send(client, MenuH, 45);
     delete p;
     return Plugin_Handled;
 }
@@ -517,7 +520,6 @@ public int MenuH(Menu menu, MenuAction action, int client, int item)
         }
         case 4:
         {
-            // 3Dデバッグ描画の消去
             SetVariantString("DebugDrawClear()");
             AcceptEntityInput(0, "RunScriptCode");
             ClientCommand(client, "playgamesound Buttons.snd10");
@@ -530,7 +532,6 @@ public int MenuH(Menu menu, MenuAction action, int client, int item)
         }
     }
 
-    // 再表示
     if (g_bMenuOpen[client]) Cmd_Menu(client, 0);
     return 0;
 }
@@ -543,11 +544,10 @@ void GetClock(char[] out, int size)
     FormatTime(out, size, "%H:%M:%S");
 }
 
-const char[] GetMapNameEx()
+// こちらも戻り値ではなくバッファ渡し
+stock void GetMapNameEx(char[] map, int maxlen)
 {
-    static char map[64];
-    GetCurrentMap(map, sizeof map);
-    return map;
+    GetCurrentMap(map, maxlen);
 }
 
 bool GetEntOriginSafe(int ent, float pos[3])
@@ -559,10 +559,4 @@ bool GetEntOriginSafe(int ent, float pos[3])
     }
     pos[0]=pos[1]=pos[2]=0.0;
     return false;
-}
-
-stock bool SDKHookEx(SDKHookCB cb)
-{
-    // OnEntityCreated を使う宣言だけしておく（SDKHooksのロード順対策）
-    return true;
 }
